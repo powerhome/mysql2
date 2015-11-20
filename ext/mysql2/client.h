@@ -50,6 +50,9 @@ typedef struct {
   MYSQL *client;
 } mysql_client_wrapper;
 
+void log_lead_insert_value(const char *name, const char *value);
+void trace_lead_insert(const char *msg);
+
 #define REQUIRE_CONNECTED(wrapper) \
   REQUIRE_INITIALIZED(wrapper) \
   if (!wrapper->connected && !wrapper->reconnect_enabled) { \

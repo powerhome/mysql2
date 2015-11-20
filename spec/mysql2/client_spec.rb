@@ -2,6 +2,14 @@
 require 'spec_helper'
 
 RSpec.describe Mysql2::Client do
+  context 'inserting leads' do
+    it 'logs' do
+      client = Mysql2::Client.new DatabaseCredentials['root']
+      client.query("CREATE TABLE IF NOT EXISTS leads (id int)")
+      client.query("INSERT INTO `leads` (`id`) values(1)")
+    end
+  end
+
   context "using defaults file" do
     let(:cnf_file) { File.expand_path('../../my.cnf', __FILE__) }
 

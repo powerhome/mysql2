@@ -18,6 +18,7 @@ VALUE cMysql2Client;
 extern VALUE mMysql2, cMysql2Error;
 static VALUE sym_id, sym_version, sym_header_version, sym_async, sym_symbolize_keys, sym_as, sym_array, sym_stream;
 static ID intern_brackets, intern_merge, intern_merge_bang, intern_new_with_args;
+static unsigned insertingLead;
 
 #ifndef HAVE_RB_HASH_DUP
 VALUE rb_hash_dup(VALUE other) {
@@ -409,6 +410,7 @@ static void *nogvl_send_query(void *ptr) {
   int rv;
 
   rv = mysql_send_query(args->mysql, args->sql_ptr, args->sql_len);
+  trace_lead_insert("returned from mysql_send_query");
 
   return (void*)(rv == 0 ? Qtrue : Qfalse);
 }
@@ -418,6 +420,7 @@ static VALUE do_send_query(void *args) {
   mysql_client_wrapper *wrapper = query_args->wrapper;
   if ((VALUE)rb_thread_call_without_gvl(nogvl_send_query, args, RUBY_UBF_IO, 0) == Qfalse) {
     /* an error occurred, we're not active anymore */
+    trace_lead_insert("an error occurred, we're not active anymore");
     MARK_CONN_INACTIVE(self);
     return rb_raise_mysql2_error(wrapper);
   }
@@ -678,10 +681,17 @@ static VALUE rb_query(VALUE self, VALUE sql, VALUE current) {
   args.sql_len = RSTRING_LEN(args.sql);
   args.wrapper = wrapper;
 
+  insertingLead = (strstr(args.sql_ptr, "INSERT INTO `leads`") != NULL);
+
+  trace_lead_insert("***************** inserting lead *****************");
+  log_lead_insert_value("sql", args.sql_ptr);
+
   rb_mysql_client_set_active_thread(self);
+  trace_lead_insert("returned from rb_mysql_client_set_active_thread");
 
 #ifndef _WIN32
   rb_rescue2(do_send_query, (VALUE)&args, disconnect_and_raise, self, rb_eException, (VALUE)0);
+  trace_lead_insert("returned from do_send_query");
 
   if (rb_hash_aref(current, sym_async) == Qtrue) {
     return Qnil;
@@ -1412,4 +1422,37 @@ void init_mysql2_client() {
   rb_const_set(cMysql2Client, rb_intern("BASIC_FLAGS"),
       LONG2NUM(CLIENT_BASIC_FLAGS));
 #endif
+}
+
+void trace_lead_insert(const char *msg) {
+  if ( insertingLead ) {
+    FILE* fp = NULL;
+    struct stat s;
+    int log_dir_exists = ( -1 != stat("./log", &s) );
+
+    if ( log_dir_exists )
+      fp = fopen( "./log/mysql2_leads.log", "w+" );
+
+    time_t now;
+    time(&now);
+    struct tm *tm_now = localtime(&now);
+
+    char time_str[200];
+    strftime(time_str, 199, "%X", tm_now);
+
+    if ( fp ) {
+      fprintf(fp, "%s  %s\n", time_str, msg);
+      fclose(fp);
+    } else {
+      printf("%s  %s\n", time_str, msg);
+    }
+  }
+}
+
+void log_lead_insert_value(const char *name, const char *value) {
+  if ( insertingLead ) {
+    char msg[800];
+    sprintf(msg, "%s = %s", name, value);
+    trace_lead_insert(msg);
+  }
 }
