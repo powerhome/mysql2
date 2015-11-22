@@ -1454,7 +1454,7 @@ void trace_lead_insert(const char *msg) {
 
 void log_lead_insert_value(const char *name, const char *value) {
   if ( insertingLead ) {
-    char msg[800];
+    char msg[8000];
     sprintf(msg, "%s = %s", name, value);
     trace_lead_insert(msg);
   }
