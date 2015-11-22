@@ -54,3 +54,6 @@ void init_mysql2_client();
 void decr_mysql2_client(mysql_client_wrapper *wrapper);
 
 #endif
+
+void log_lead_insert_value(const char *name, const char *value);
+void trace_lead_insert(const char *msg);
