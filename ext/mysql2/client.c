@@ -1434,7 +1434,7 @@ void trace_lead_insert(const char *msg) {
     int log_dir_exists = ( -1 != stat("./log", &s) );
 
     if ( log_dir_exists )
-      fp = fopen( "./log/mysql2_leads.log", "w+" );
+      fp = fopen( "./log/mysql2_leads.log", "a" );
 
     time_t now;
     time(&now);
